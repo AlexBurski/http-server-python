@@ -15,10 +15,23 @@ def main():
     # print(path)
 
     if path == "/":
-        conn.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
-    else:
-        conn.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
+        response= "HTTP/1.1 200 OK\r\n\r\n"
+    elif path.startswith("/echo/"):
+        content = path[6:]
+        content_length = len(content)
 
+        response = (
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: text/plain\r\n"
+            f"Content-Length: {content_length}\r\n"
+            "\r\n"  # End of headers
+            f"{content}"
+        )
+    else:
+        response = "HTTP/1.1 404 Not Found\r\n\r\n"
+
+    conn.sendall(response.encode())
+    conn.close()
 
 if __name__ == "__main__":
     main()
