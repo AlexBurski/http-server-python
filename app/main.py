@@ -1,11 +1,13 @@
 import socket  # noqa: F401
 import threading
+import argparse
+import os
 
 HOST = "localhost"
 PORT = 4221
 
 
-def handle_client(conn, addr):
+def handle_client(conn, addr, file_directory):
     data = conn.recv(1024)
     received_request = data.decode()
     lines = received_request.split("\r\n")
@@ -43,6 +45,31 @@ def handle_client(conn, addr):
             "\r\n"  # End of headers
             f"{content}"
         )
+    elif path.startswith("/files/"):
+        filename = path[7:]
+        full_path = os.path.join(file_directory, filename)
+
+        if os.path.isfile(full_path):
+            with open (full_path, "rb") as file:
+                content = file.read()
+
+            print("initial content", content)
+            print("decode content", content.decode())
+
+
+            content_length = len(content)
+
+            response = (
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: application/octet-stream\r\n"
+                f"Content-Length: {content_length}\r\n"
+                "\r\n"  # End of headers
+                f"{content.decode()}"
+            )
+            conn.sendall(response.encode())
+            conn.close()
+        else:
+            response = "HTTP/1.1 404 Not Found\r\n\r\n"
 
     else:
         response = "HTTP/1.1 404 Not Found\r\n\r\n"
@@ -52,10 +79,15 @@ def handle_client(conn, addr):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--directory", required=False)
+    args = parser.parse_args()
+    file_directory = args.directory
+
     server_socket = socket.create_server((HOST, PORT), reuse_port=True)
     while True:
         conn, addr = server_socket.accept()
-        thread = threading.Thread(target=handle_client, args=(conn, addr))
+        thread = threading.Thread(target=handle_client, args=(conn, addr, file_directory))
         thread.start()
 
 
