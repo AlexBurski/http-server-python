@@ -38,7 +38,7 @@ def handle_client(conn, addr, file_directory):
     elif path.startswith("/echo/"):
         content = path[6:]
         content_length = len(content)
-        if "gzip" in accept_encoding.lower():
+        if "gzip" in accept_encoding.lower().split(", "):
             response = (
                 "HTTP/1.1 200 OK\r\n"
                 "Content-Type: text/plain\r\n"
