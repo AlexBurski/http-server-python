@@ -2,6 +2,7 @@ import socket  # noqa: F401
 import threading
 import argparse
 import os
+import gzip
 
 HOST = "localhost"
 PORT = 4221
@@ -32,26 +33,33 @@ def handle_client(conn, addr, file_directory):
 
     while len(body) < content_length:
         body += conn.recv(content_length - len(body))
-
+    compressed_body = gzip.compress(body.encode('utf-8'))
     if path == "/":
         response = "HTTP/1.1 200 OK\r\n\r\n"
     elif path.startswith("/echo/"):
         content = path[6:]
-        content_length = len(content)
+        content_bytes = content.encode("utf-8")
+        compressed_body = gzip.compress(content_bytes)
+        compressed_length = len(compressed_body)
+        print(compressed_body, type(compressed_body))
         if "gzip" in accept_encoding.lower().split(", "):
             response = (
                 "HTTP/1.1 200 OK\r\n"
                 "Content-Type: text/plain\r\n"
                 "Content-Encoding: gzip\r\n"
-                f"Content-Length: {content_length}\r\n"
+                f"Content-Length: {compressed_length}\r\n"
                 "\r\n"  # End of headers
-                f"{content}"
+                # f"{compressed_body}"
             )
+            conn.sendall(response.encode())
+            conn.sendall(compressed_body)
+            conn.close()
+            return
         else:
             response = (
                 "HTTP/1.1 200 OK\r\n"
                 "Content-Type: text/plain\r\n"
-                f"Content-Length: {content_length}\r\n"
+                f"Content-Length: {len(content)}\r\n"
                 "\r\n"  # End of headers
                 f"{content}"
             )
