@@ -18,7 +18,7 @@ def handle_client(conn, addr, file_directory):
     first_line = lines[0]
     method, path, version = first_line.split(" ")
 
-    print(lines)
+    # print(lines)
     headers = {}
     for header_part in lines[1:]:
         if header_part == "":
@@ -28,6 +28,7 @@ def handle_client(conn, addr, file_directory):
     body_start = received_request.find("\r\n\r\n") + 4
     body = data[body_start:].decode()
     content_length = int(headers.get("content-length", 0))
+    accept_encoding = headers.get("accept-encoding", "")
 
     while len(body) < content_length:
         body += conn.recv(content_length - len(body))
@@ -37,14 +38,23 @@ def handle_client(conn, addr, file_directory):
     elif path.startswith("/echo/"):
         content = path[6:]
         content_length = len(content)
-
-        response = (
-            "HTTP/1.1 200 OK\r\n"
-            "Content-Type: text/plain\r\n"
-            f"Content-Length: {content_length}\r\n"
-            "\r\n"  # End of headers
-            f"{content}"
-        )
+        if "gzip" in accept_encoding.lower():
+            response = (
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: text/plain\r\n"
+                "Content-Encoding: gzip\r\n"
+                f"Content-Length: {content_length}\r\n"
+                "\r\n"  # End of headers
+                f"{content}"
+            )
+        else:
+            response = (
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: text/plain\r\n"
+                f"Content-Length: {content_length}\r\n"
+                "\r\n"  # End of headers
+                f"{content}"
+            )
     elif path.startswith("/user-agent"):
         content = headers.get("user-agent")
         content_length = len(content)
@@ -69,8 +79,6 @@ def handle_client(conn, addr, file_directory):
             with open(full_path, "rb") as file:
                 content = file.read()
 
-            print("initial content", content)
-            print("decode content", content.decode())
 
             content_length = len(content)
 
